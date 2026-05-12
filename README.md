@@ -277,22 +277,12 @@ Duplicate requests with the same key within 24 hours return the original respons
 
 ## Architecture
 
-The system separates the synchronous API layer from asynchronous processing:
+System layers
+The system is split into two hard-separated execution paths:
 
-1. The API server accepts requests, validates them, and writes to PostgreSQL.
-2. Payment processing is enqueued as a background job — the API returns `202 Accepted` immediately.
-3. The worker picks up the job, calls the simulated processor, updates the transaction state, and enqueues a webhook delivery task.
-4. The webhook worker signs the payload, delivers it to the merchant's URL, and retries on failure with exponential backoff.
-5. All state transitions are written to an immutable audit log.
+![System Layer](<system architecture.png>)
 
-**Payment intent status flow:**
-
-```
-created → processing → succeeded → refunded
-                                 ↘ partially_refunded
-               ↘ failed
-created → cancelled
-```
+Terminal states (cancelled, failed, refunded) cannot transition further. Attempts to do so return an error.
 
 ---
 
